@@ -5,24 +5,27 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
-from tavily import TavilyClient
+from langchain_tavily import TavilySearch
+from pydantic import BaseModel, Field
+from typing import List
 
-tavily = TavilyClient()
+# ----------------- SCHEMA ------------------
+class Source(BaseModel):
+    "Schema for a source used for model"
+    url : str = Field(description="The URL of the source")
 
-@tool
-def get_weather(query:str) -> str:
-    """
-    Tool that simply take query and return query itself
-    Args: The query to search for
-    Returns: The search result
-    """
-    print(f"searching for {query}")
-    return tavily.search(query=query)
+class AgentResponse(BaseModel):
+    "Schema for the agent response with answer and sources"
+    answer:str = Field(description="The answer to the query")
+    # if none default set to empty list
+    sources : List[Source] = Field(default_factory=list, description="The list of sources used to generate the answer")
 
+# ----------------- MODEL & TOOLS ------------------
 llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
-tools = [get_weather]
+tools = [TavilySearch()]
 
-agent = create_agent(model=llm, tools=tools)
+# using the AgentResponse Schema
+agent = create_agent(model=llm, tools=tools, response_format=AgentResponse)
 
 
 def main():
