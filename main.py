@@ -5,10 +5,22 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
-from langchain_tavily import TavilySearch
+from tavily import TavilyClient
+
+tavily = TavilyClient()
+
+@tool
+def get_weather(query:str) -> str:
+    """
+    Tool that simply take query and return query itself
+    Args: The query to search for
+    Returns: The search result
+    """
+    print(f"searching for {query}")
+    return tavily.search(query=query)
 
 llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
-tools = [TavilySearch()]
+tools = [get_weather]
 
 agent = create_agent(model=llm, tools=tools)
 
