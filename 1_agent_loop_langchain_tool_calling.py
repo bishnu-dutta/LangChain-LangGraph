@@ -1,5 +1,5 @@
-from langsmith import traceable
 from dotenv import load_dotenv
+from langsmith import traceable
 
 load_dotenv()
 
@@ -11,6 +11,7 @@ MAX_ITERATIONS = 10
 MODEL = "gemini-3.6-flash"
 
 # ---- Tools (LangChain @tool dectorator) ---
+
 
 @tool
 def get_product_price(product: str) -> str:
@@ -25,33 +26,31 @@ def get_product_price(product: str) -> str:
 
     return prices.get(product.strip().lower(), 0)
 
-@tool 
-def apply_discount(price:float, discount_tier:str) -> float:
-    """ Apply for a discount tier to a price and return the final price.
-    Available tiers: Bronze, Silver, Gold. """
+
+@tool
+def apply_discount(price: float, discount_tier: str) -> float:
+    """Apply for a discount tier to a price and return the final price.
+    Available tiers: Bronze, Silver, Gold."""
     print(f"Applying discount tier {discount_tier} to price {price}")
-    discount_percentages = {
-        "Bronze":5,
-        "Silver":12,
-        "Gold":23
-    }
-    discount = discount_percentages.get(discount_tier,0)
-    final_price = price * (1- discount / 100)
-    return round(final_price,2)
-    
+    discount_percentages = {"Bronze": 5, "Silver": 12, "Gold": 23}
+    discount = discount_percentages.get(discount_tier, 0)
+    final_price = price * (1 - discount / 100)
+    return round(final_price, 2)
+
 
 # --- Agent Loop ---
+
 
 @traceable(name="LangChain Agent Loop")
 def run_agent(question: str):
     tools = [get_product_price, apply_discount]
-    tools_dict = {t.name: t for t in tools}  
+    tools_dict = {t.name: t for t in tools}
 
     llm = init_chat_model(model=MODEL, model_provider="google_genai")
     llm_with_tools = llm.bind_tools(tools)
 
     print(f"Question: {question}")
-    print("="*60)
+    print("=" * 60)
 
     messages = [
         # defensize prompting
@@ -73,7 +72,7 @@ def run_agent(question: str):
         ),
         HumanMessage(content=question),
     ]
-    
+
     for iteration in range(1, MAX_ITERATIONS + 1):
         print(f"--- Iteration {iteration} ---")
 
@@ -97,19 +96,20 @@ def run_agent(question: str):
         tool_to_use = tools_dict.get(tool_name)
         if tool_to_use is None:
             raise ValueError(f"Tool '{tool_name}' does not exist")
-        
+
         observation = tool_to_use.invoke(tool_args)
         print(f"[Tool Output]: {observation}")
 
         messages.append(
-            ToolMessage(content=str(observation), tool_call_id=tool_call_id)        
-        )  
+            ToolMessage(content=str(observation), tool_call_id=tool_call_id)
+        )
 
     print("Error: Max Iterations reached without a final answer")
-    return None          
-    
+    return None
+
 
 if __name__ == "__main__":
     print("hello langchain agent (.bind_tools)! \n")
-    result = run_agent("What is the price of a macbook pro and apply a gold discount on it?")
-    
+    result = run_agent(
+        "What is the price of a macbook pro and apply a gold discount on it?"
+    )

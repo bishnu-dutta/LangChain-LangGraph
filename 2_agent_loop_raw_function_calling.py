@@ -1,4 +1,4 @@
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv())
 
@@ -15,6 +15,7 @@ client = genai.Client()
 # --- Tools (Plain Python functions with LangSmith tracing) ---
 # Difference 1: Without LangChain's @tool decorator, tools are regular Python functions.
 # We use LangSmith's @traceable(run_type="tool") to keep monitoring tool executions.
+
 
 @traceable(run_type="tool")
 def get_product_price(product: str) -> float:
@@ -33,7 +34,9 @@ def get_product_price(product: str) -> float:
 def apply_discount(price: float, discount_tier: str) -> float:
     """Apply a discount tier to a price and return the final price.
     Available tiers: Bronze, Silver, Gold."""
-    print(f"    >> Executing apply_discount(price={price}, discount_tier='{discount_tier}')")
+    print(
+        f"    >> Executing apply_discount(price={price}, discount_tier='{discount_tier}')"
+    )
     discount_percentages = {"Bronze": 5, "Silver": 12, "Gold": 23}
     discount = discount_percentages.get(discount_tier.title(), 0)
     return round(price * (1 - discount / 100), 2)
@@ -85,6 +88,7 @@ tools_for_llm = [
 # --- Helper: traced Google GenAI call ---
 # Difference 3: Without LangChain, we must manually trace LLM calls for LangSmith.
 
+
 @traceable(name="Google GenAI Chat", run_type="llm")
 def gemini_chat_traced(contents, generation_config):
     return client.models.generate_content(
@@ -95,6 +99,7 @@ def gemini_chat_traced(contents, generation_config):
 
 
 # --- Agent Loop ---
+
 
 @traceable(name="Google GenAI Agent Loop")
 def run_agent(question: str):
@@ -139,7 +144,9 @@ def run_agent(question: str):
         print(f"\n--- Iteration {iteration} ---")
 
         # Difference 5: client.models.generate_content() directly instead of llm_with_tools.invoke()
-        response = gemini_chat_traced(contents=contents, generation_config=generation_config)
+        response = gemini_chat_traced(
+            contents=contents, generation_config=generation_config
+        )
 
         function_calls = response.function_calls
 
@@ -182,4 +189,6 @@ def run_agent(question: str):
 if __name__ == "__main__":
     print("Hello Google GenAI Raw Agent Loop!")
     print()
-    result = run_agent("What is the price of a macbook pro and apply a gold discount on it?")
+    result = run_agent(
+        "What is the price of a macbook pro and apply a gold discount on it?"
+    )
