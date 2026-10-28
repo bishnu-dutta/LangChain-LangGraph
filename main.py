@@ -1,9 +1,16 @@
+from pkgutil import iter_modules
 import os
+from operator import itemgetter
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_core.runnables import RunnablePassthrough
+from langchain_google_genai import (
+    ChatGoogleGenerativeAI,
+    GoogleGenerativeAIEmbeddings,
+)
 from langchain_pinecone import PineconeVectorStore
 
 load_dotenv()
@@ -69,6 +76,31 @@ def retrieval_chain_without_lcel(query: str):
     return response.content
 
 
+def create_retrieval_chain_with_lcel():
+    """
+    Create a retrieval chain using LCEL
+    Returns a chain that can be invoked with {"question":"..."}
+
+    Advantages over non-LCEL approach:
+    - Declarative and composable: Easy to chain operations with pipe operator (|)
+    - Built-in streaming: chain.stream() works out of the box
+    - Built-in async: chain.invoke() and chain.astream() available
+    - Type safety: Better integration with LangChain's type system
+    - Less code: More concise and readable
+    - Reusable: Chain can be saved, shared, and composed with other chains
+    - Better debugging: LangChain provides better observability tools
+    """
+    retrieval_chain = (
+        RunnablePassthrough.assign(
+            context=itemgetter("question") | retriever | format_docs
+        )
+        | prompt_template
+        | llm
+        | StrOutputParser()
+    )
+    return retrieval_chain
+
+
 if __name__ == "__main__":
     print("retriving...")
 
@@ -85,3 +117,19 @@ if __name__ == "__main__":
     print("=" * 70)
     result_without_lcel = retrieval_chain_without_lcel(query)
     print(f"Answer: {result_without_lcel}")
+
+    print("\n" + "=" * 70)
+    print("IMPLEMENTATION 2: With LCEL - Better Approach")
+    print("=" * 70)
+    print("Why LCEL is better:")
+    print("- More concise and declarative")
+    print("- Built-in streaming: chain.stream()")
+    print("- Built-in async: chain.invoke()")
+    print("- Easy to compose with other chains")
+    print("- Better for production use")
+    print("- Better debugging: LangChain provides better observability tools")
+    print("=" * 70 + "\n")
+
+    chain_with_lcel = create_retrieval_chain_with_lcel()
+    result_with_lcel = chain_with_lcel.invoke({"question": query})
+    print(f"Answer: {result_with_lcel}")
