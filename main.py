@@ -1,4 +1,3 @@
-from pkgutil import iter_modules
 import os
 from operator import itemgetter
 
