@@ -1,48 +1,44 @@
-import os
-
 from dotenv import load_dotenv
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
+from langgraph.graph import END, MessagesState, StateGraph
+
+from nodes import run_agent_reasoning, tool_node
 
 load_dotenv()
 
+AGENT_REASON = "agent_reason"
+ACT = "act"
+LAST = -1
 
-def main():
-    print("Hello from langchain-langgraph!")
-    information = """
-    Paul Carlyle (born 19 July 1967) is a Northern Irish former footballer and currently a manager.
 
-Carlyle, nicknamed 'Storky', played for Derry City in the League of Ireland and was an important member of their historic treble-winning squad in the 1988–89 season. In June 1989 after a trial at Liverpool he represented the League of Ireland in a quadrangular international tournament in Trinidad and Tobago.[1]
+def should_continue(state: MessagesState):
+    if not state["messages"][LAST].tool_calls:
+        return END
+    return ACT
 
-He scored what is remembered as a great goal on a momentous European Cup occasion in the Brandywell against Benfica when he drilled a shot past the keeper into the roof of the net.[2]
 
-He signed for Shamrock Rovers in August 1987 and made his debut on the 23rd at Longford. In total he made twenty total appearances including two in the 1987–88 European Cup.
+flow = StateGraph(MessagesState)
 
-He made his League of Ireland debut for Derry at Cobh Ramblers on 19 October 1986 after moving from Coleraine.
+flow.add_node(AGENT_REASON, run_agent_reasoning)
+flow.set_entry_point(AGENT_REASON)
+flow.add_node(ACT, tool_node)
 
-Trialed at Manchester United in February 1990.
+flow.add_conditional_edges(AGENT_REASON, should_continue, {END: END, ACT: ACT})
 
-His older brother Hilary played for Finn Harps, Dundalk (where he scored in the European Cup) and in the North American Soccer League.
+flow.add_edge(ACT, AGENT_REASON)
 
-Paul (Storky) is a lifelong Liverpool supporter.
-
-Paul is a former manager of Institute, having taken up the role in 2011 after the resignation of John Gregg and leaving the club in December 2012.[3]
-    """
-    summary_prompt_template = PromptTemplate(
-        input_variables=["Information"],
-        template="""
-        You are a helpful assistant. 
-        Please summarize the following information: {Information}
-        """
-    )
-    
-    llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash")
-
-    chain = summary_prompt_template | llm | StrOutputParser()
-    response = chain.invoke(input={"Information": information})
-    print(response)
-
+app = flow.compile()
+app.get_graph().draw_mermaid_png(output_file_path="flow.png")
 
 if __name__ == "__main__":
-    main()
+    print("Hello ReAct LangGraph with Function Calling ")
+    res = app.invoke(
+        {
+            "messages": [
+                HumanMessage(
+                    content="What is the temperature of France? List it and then triple it"
+                )
+            ]
+        }
+    )
+    print(res["messages"][-1].content)
